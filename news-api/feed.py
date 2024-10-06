@@ -6,7 +6,7 @@ from urllib.parse import urlencode
 from rdflib import Graph, Literal, Namespace, BNode, URIRef
 from rdflib.resource import Resource
 from rdflib.namespace import RDF, XSD
-import openai
+from openai import OpenAI
 
 # Define Namespaces
 SCHEMA = Namespace("http://schema.org/")
@@ -82,12 +82,13 @@ def extract_named_entities(openai_api_key: str, description: str) -> Optional[Li
     """
     Extract named entities from the given description using the ChatGPT API with the function_call mode.
     Returns a list of dictionaries, each containing 'name' and 'uri' for the entities.
-    """
-    
-    openai.api_key = openai_api_key  # Replace with your actual API key
-    
-    # Use GPT-4 with function_call to return well-structured JSON
-    response = openai.ChatCompletion.create(
+    """    
+    client = OpenAI(
+        # This is the default and can be omitted
+        api_key=openai_api_key
+    )
+
+    chat_completion = client.chat.completions.create( 
         model="gpt-4-0613",  # Ensure you're using the latest GPT model that supports function calls
         messages=[
             {
