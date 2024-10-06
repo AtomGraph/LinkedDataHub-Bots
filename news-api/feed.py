@@ -182,7 +182,7 @@ for article_subject in articles_graph.subjects(RDF.type, SCHEMA.Article):
    # Example: Linking extracted entities to this article
     description = article_resource.value(SCHEMA.description)
     if description:
-        entities = extract_named_entities(openai_api_key, news_json)
+        entities = extract_named_entities(openai_api_key, description)
         if entities:
             link_entities_with_article(articles_graph, article, entities)
 
