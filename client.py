@@ -1,51 +1,51 @@
 import ssl
 import urllib.request
-import argparse
 from rdflib import Graph
 
-# Set up argument parsing
-parser = argparse.ArgumentParser(description="Make an HTTPS request with RDF response handling and no SSL verification.")
-parser.add_argument("url", help="The URL to send the request to")  # Positional argument for the URL
-parser.add_argument("--cert", required=True, help="Path to the certificate .pem file containing both the private key and certificate")
-parser.add_argument("--password", required=True, help="Password for the encrypted private key in the .pem file")
+class LinkedDataClient:
+    def __init__(self, cert_pem_path: str, cert_password: str, verify_ssl: bool = True):
+        """
+        Initializes the LinkedDataClient with SSL configuration.
 
-args = parser.parse_args()
+        :param cert_pem_path: Path to the certificate .pem file (containing both private key and certificate).
+        :param cert_password: Password for the encrypted private key in the .pem file.
+        :param verify_ssl: Whether to verify the server's SSL certificate. Default is True.
+        """
+        self.ssl_context = ssl.create_default_context()
 
-# Read arguments
-cert_pem_path = args.cert
-cert_password = args.password
-url = args.url
+        # Load client certificate
+        self.ssl_context.load_cert_chain(certfile=cert_pem_path, password=cert_password)
 
-# Create an SSL context that does not verify the server's certificate
-ssl_context = ssl.create_default_context()
-ssl_context.check_hostname = False
-ssl_context.verify_mode = ssl.CERT_NONE
-ssl_context.load_cert_chain(certfile=cert_pem_path, password=cert_password)
+        # Configure SSL verification
+        if not verify_ssl:
+            self.ssl_context.check_hostname = False
+            self.ssl_context.verify_mode = ssl.CERT_NONE
 
-# Use the SSL context in an HTTPS handler
-https_handler = urllib.request.HTTPSHandler(context=ssl_context)
-opener = urllib.request.build_opener(https_handler)
+        # Create an HTTPS handler with the configured SSL context
+        self.opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=self.ssl_context))
 
-# Create a request with the Accept header for N-Triples
-headers = {"Accept": "application/n-triples"}
-request = urllib.request.Request(url, headers=headers)
+    def get(self, url: str) -> Graph:
+        """
+        Fetches RDF data from the given URL and returns it as an RDFLib Graph.
 
-try:
-    # Perform the request
-    response = opener.open(request)
-    
-    # Read and decode the response
-    data = response.read().decode("utf-8")
-    
-    # Parse the response using RDFLib
-    g = Graph()
-    g.parse(data=data, format="nt")
-    
-    # Print the parsed triples
-    for subj, pred, obj in g:
-        print(f"{subj} {pred} {obj}")
-    
-    print(f"\nParsed {len(g)} triples.")
-    
-except Exception as e:
-    print(f"An error occurred: {e}")
+        :param url: The URL to fetch RDF data from.
+        :return: An RDFLib Graph object containing the parsed RDF data.
+        """
+        # Set the Accept header to request N-Triples format
+        headers = {"Accept": "application/n-triples"}
+        request = urllib.request.Request(url, headers=headers)
+
+        try:
+            # Perform the HTTP request
+            response = self.opener.open(request)
+
+            # Read and decode the response data
+            data = response.read().decode("utf-8")
+
+            # Parse the N-Triples data into an RDFLib Graph
+            g = Graph()
+            g.parse(data=data, format="nt")
+            return g
+
+        except Exception as e:
+            raise RuntimeError(f"An error occurred while fetching data from {url}: {e}")
