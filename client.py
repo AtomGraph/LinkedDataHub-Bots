@@ -45,4 +45,7 @@ try:
     for subj, pred, obj in g:
         print(f"{subj} {pred} {obj}")
     
-    print(f"\nParsed {len(g)} t
+    print(f"\nParsed {len(g)} triples.")
+    
+except Exception as e:
+    print(f"An error occurred: {e}")
