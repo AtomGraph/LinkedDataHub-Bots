@@ -48,7 +48,7 @@ class LinkedDataClient:
         g.parse(data=data, format="nt")
         return g
 
-    def post(self, url: str, data: Graph) -> HTTPResponse:
+    def post(self, url: str, graph: Graph) -> HTTPResponse:
         """
         Sends RDF data to the given URL using HTTP POST.
 
@@ -57,16 +57,16 @@ class LinkedDataClient:
         :return: The HTTPResponse object.
         """
         # Serialize the RDF data to N-Triples
-        serialized_data = data.serialize(format="nt")
+        data = data.serialize(format="nt")
         headers = {
             "Content-Type": "application/n-triples",
             "Accept": "application/n-triples"
         }
-        request = urllib.request.Request(url, data=serialized_data.encode("utf-8"), headers=headers, method="POST")
+        request = urllib.request.Request(url, data=data.encode("utf-8"), headers=headers, method="POST")
 
         return self.opener.open(request)
 
-    def put(self, url: str, data: Graph) -> HTTPResponse:
+    def put(self, url: str, graph: Graph) -> HTTPResponse:
         """
         Sends RDF data to the given URL using HTTP PUT.
 
@@ -75,12 +75,12 @@ class LinkedDataClient:
         :return: The HTTPResponse object.
         """
         # Serialize the RDF data to N-Triples
-        serialized_data = data.serialize(format="nt")
+        data = data.serialize(format="nt")
         headers = {
             "Content-Type": "application/n-triples",
             "Accept": "application/n-triples"
         }
-        request = urllib.request.Request(url, data=serialized_data.encode("utf-8"), headers=headers, method="PUT")
+        request = urllib.request.Request(url, data=data.encode("utf-8"), headers=headers, method="PUT")
 
         return self.opener.open(request)
 
