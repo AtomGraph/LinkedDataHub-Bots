@@ -7,7 +7,6 @@ if __name__ == "__main__":
     parser.add_argument("url", help="The URL to fetch RDF data from.")  # Positional argument for the URL
     parser.add_argument("--cert", required=True, help="Path to the certificate .pem file containing both the private key and certificate.")
     parser.add_argument("--password", required=True, help="Password for the encrypted private key in the .pem file.")
-    parser.add_argument("--no-verify", action="store_true", help="Disable SSL certificate verification.")
 
     args = parser.parse_args()
 
@@ -15,7 +14,7 @@ if __name__ == "__main__":
     client = LinkedDataClient(
         cert_pem_path=args.cert,
         cert_password=args.password,
-        verify_ssl=not args.no_verify
+        verify_ssl=False
     )
 
     # Fetch RDF data
