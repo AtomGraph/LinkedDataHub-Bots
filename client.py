@@ -1,7 +1,8 @@
 import ssl
 import urllib.request
 from rdflib import Graph
-from typing import Optional
+from http.client import HTTPResponse
+
 
 class LinkedDataClient:
     def __init__(self, cert_pem_path: str, cert_password: str, verify_ssl: bool = True):
@@ -47,7 +48,7 @@ class LinkedDataClient:
         g.parse(data=data, format="nt")
         return g
 
-    def post(self, url: str, data: Graph) -> urllib.request.HTTPResponse:
+    def post(self, url: str, data: Graph) -> HTTPResponse:
         """
         Sends RDF data to the given URL using HTTP POST.
 
@@ -65,7 +66,7 @@ class LinkedDataClient:
 
         return self.opener.open(request)
 
-    def put(self, url: str, data: Graph) -> urllib.request.HTTPResponse:
+    def put(self, url: str, data: Graph) -> HTTPResponse:
         """
         Sends RDF data to the given URL using HTTP PUT.
 
@@ -83,7 +84,7 @@ class LinkedDataClient:
 
         return self.opener.open(request)
 
-    def delete(self, url: str) -> urllib.request.HTTPResponse:
+    def delete(self, url: str) -> HTTPResponse:
         """
         Sends an HTTP DELETE request to the given URL.
 
