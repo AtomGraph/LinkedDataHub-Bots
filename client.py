@@ -1,6 +1,7 @@
 import ssl
 import urllib.request
 from rdflib import Graph
+from typing import Optional
 
 class LinkedDataClient:
     def __init__(self, cert_pem_path: str, cert_password: str, verify_ssl: bool = True):
@@ -35,17 +36,60 @@ class LinkedDataClient:
         headers = {"Accept": "application/n-triples"}
         request = urllib.request.Request(url, headers=headers)
 
-        try:
-            # Perform the HTTP request
-            response = self.opener.open(request)
+        # Perform the HTTP request
+        response = self.opener.open(request)
 
-            # Read and decode the response data
-            data = response.read().decode("utf-8")
+        # Read and decode the response data
+        data = response.read().decode("utf-8")
 
-            # Parse the N-Triples data into an RDFLib Graph
-            g = Graph()
-            g.parse(data=data, format="nt")
-            return g
+        # Parse the N-Triples data into an RDFLib Graph
+        g = Graph()
+        g.parse(data=data, format="nt")
+        return g
 
-        except Exception as e:
-            raise RuntimeError(f"An error occurred while fetching data from {url}: {e}")
+    def post(self, url: str, data: Graph) -> urllib.request.HTTPResponse:
+        """
+        Sends RDF data to the given URL using HTTP POST.
+
+        :param url: The URL to send RDF data to.
+        :param data: An RDFLib Graph containing the data to send.
+        :return: The HTTPResponse object.
+        """
+        # Serialize the RDF data to N-Triples
+        serialized_data = data.serialize(format="nt")
+        headers = {
+            "Content-Type": "application/n-triples",
+            "Accept": "application/n-triples"
+        }
+        request = urllib.request.Request(url, data=serialized_data.encode("utf-8"), headers=headers, method="POST")
+
+        return self.opener.open(request)
+
+    def put(self, url: str, data: Graph) -> urllib.request.HTTPResponse:
+        """
+        Sends RDF data to the given URL using HTTP PUT.
+
+        :param url: The URL to send RDF data to.
+        :param data: An RDFLib Graph containing the data to send.
+        :return: The HTTPResponse object.
+        """
+        # Serialize the RDF data to N-Triples
+        serialized_data = data.serialize(format="nt")
+        headers = {
+            "Content-Type": "application/n-triples",
+            "Accept": "application/n-triples"
+        }
+        request = urllib.request.Request(url, data=serialized_data.encode("utf-8"), headers=headers, method="PUT")
+
+        return self.opener.open(request)
+
+    def delete(self, url: str) -> urllib.request.HTTPResponse:
+        """
+        Sends an HTTP DELETE request to the given URL.
+
+        :param url: The URL to send the DELETE request to.
+        :return: The HTTPResponse object.
+        """
+        request = urllib.request.Request(url, method="DELETE")
+
+        return self.opener.open(request)
