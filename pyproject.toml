@@ -25,4 +25,6 @@ where = ["src"]
 webalgebra = { path = "../Web-Algebra", editable = true }
 
 [tool.uv]
-dev-dependencies = []
+dev-dependencies = [
+    "pytest>=8.0.0",
+]

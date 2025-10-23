@@ -1,13 +1,16 @@
 import os
 import urllib.request
 import json
-from typing import Dict, Any
+import logging
+from typing import Dict, Any, ClassVar
 from datetime import datetime
 from rdflib import Graph, Literal, Namespace, BNode, URIRef
-from rdflib.namespace import RDF, XSD
+from rdflib.namespace import RDF, XSD, OWL
 from web_algebra.operation import Operation
 from web_algebra.mcp_tool import MCPTool
 from mcp import types
+
+logger = logging.getLogger(__name__)
 
 
 # Define Namespaces
@@ -16,8 +19,13 @@ SCHEMA = Namespace("http://schema.org/")
 
 class NewsAPIFeed(Operation, MCPTool):
     """
-    Fetches news articles from NewsAPI.ai (Event Registry) and converts them to RDF using schema.org vocabulary.
+    Fetches a list of news articles from NewsAPI.ai (Event Registry) search endpoint.
+    Returns basic article metadata without fetching full details.
+    Use NewsAPIArticle to fetch full details for specific articles.
     """
+
+    # NewsAPI.ai endpoint
+    API_ENDPOINT: ClassVar[str] = "http://eventregistry.org/api/v1/article/getArticles"
 
     @classmethod
     def description(cls) -> str:
@@ -97,7 +105,7 @@ class NewsAPIFeed(Operation, MCPTool):
         # Fetch data from NewsAPI.ai
         news_json = self._fetch_data(request_payload)
 
-        # Convert to RDF Graph
+        # Convert to RDF Graph using NewsAPIArticle for each article
         return self._to_graph(news_json)
 
     def execute_json(self, arguments: dict, variable_stack: list = []) -> Graph:
@@ -155,13 +163,10 @@ class NewsAPIFeed(Operation, MCPTool):
         if not request_payload.get('apiKey'):
             raise ValueError("API key is not provided.")
 
-        # NewsAPI.ai endpoint
-        url = "http://eventregistry.org/api/v1/article/getArticles"
-
         # Prepare the request
         data = json.dumps(request_payload).encode('utf-8')
         req = urllib.request.Request(
-            url,
+            self.API_ENDPOINT,
             data=data,
             headers={'Content-Type': 'application/json'}
         )
@@ -172,10 +177,11 @@ class NewsAPIFeed(Operation, MCPTool):
 
     def _to_graph(self, data: Dict) -> Graph:
         """
-        Convert NewsAPI.ai JSON response to RDF Graph
+        Convert NewsAPI.ai list endpoint response to RDF Graph.
+        Only includes basic metadata from the search results, not full article details.
 
-        :param data: NewsAPI.ai JSON response
-        :return: RDF Graph with articles as schema.org Article resources
+        :param data: NewsAPI.ai JSON response from list endpoint
+        :return: RDF Graph with basic article metadata
         """
         # Create RDF Graph
         g = Graph()
@@ -183,7 +189,9 @@ class NewsAPIFeed(Operation, MCPTool):
         # NewsAPI.ai returns articles in articles.results
         articles = data.get('articles', {}).get('results', [])
 
-        # Loop through articles and create RDFLib resources
+        logger.info("Processing %d articles from list endpoint", len(articles))
+
+        # Loop through articles and create basic metadata
         for article_data in articles:
             # Create a blank node for the article
             article = g.resource(BNode())
@@ -191,23 +199,13 @@ class NewsAPIFeed(Operation, MCPTool):
             # Set article type as schema.org Article
             article.set(RDF.type, SCHEMA.Article)
 
-            # Set properties on the RDFLib Resource
+            # Add NewsAPI.ai URI as custom property (so we can fetch full details later)
+            if "uri" in article_data and article_data['uri']:
+                article.add(URIRef("http://eventregistry.org/property/uri"), Literal(article_data['uri']))
+
+            # Set basic properties from list endpoint
             if "title" in article_data and article_data['title']:
                 article.set(SCHEMA.headline, Literal(article_data['title']))
-
-            if "body" in article_data and article_data['body']:
-                # NewsAPI.ai provides full article body
-                article.set(SCHEMA.articleBody, Literal(article_data['body']))
-
-            # Authors in NewsAPI.ai can be a list
-            if "authors" in article_data and article_data['authors']:
-                authors = article_data['authors']
-                if isinstance(authors, list):
-                    for author_data in authors:
-                        if "name" in author_data and author_data['name']:
-                            article.add(SCHEMA.author, Literal(author_data['name']))
-                elif isinstance(authors, str):
-                    article.set(SCHEMA.author, Literal(authors))
 
             if "url" in article_data and article_data['url']:
                 article.set(SCHEMA.url, URIRef(article_data['url']))
@@ -218,7 +216,7 @@ class NewsAPIFeed(Operation, MCPTool):
             elif "dateTime" in article_data and article_data['dateTime']:
                 article.set(SCHEMA.datePublished, Literal(article_data['dateTime'], datatype=XSD.dateTime))
 
-            # Add source information
+            # Add source information if available
             if "source" in article_data and article_data['source']:
                 source_data = article_data['source']
                 source = g.resource(BNode())

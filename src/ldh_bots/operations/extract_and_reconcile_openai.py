@@ -2,6 +2,7 @@
 
 import os
 import json
+import logging
 from typing import Dict, Any, Union, ClassVar
 from rdflib import Graph, Literal, Namespace, BNode, URIRef
 from rdflib.namespace import RDF, OWL
@@ -9,6 +10,9 @@ from web_algebra.operation import Operation
 from web_algebra.mcp_tool import MCPTool
 from mcp import types
 from openai import OpenAI as OpenAIClient
+from tqdm import tqdm
+
+logger = logging.getLogger(__name__)
 
 
 # Define Namespaces
@@ -114,7 +118,9 @@ Article text:
         text_str = str(text)
 
         # Extract and reconcile entities using OpenAI in single call
+        logger.info("Extracting and reconciling entities with OpenAI...")
         entities = self._extract_and_reconcile(text_str, entity_types, client)
+        logger.info("Found %d entities", len(entities))
 
         # Create new graph with entities
         entities_graph = Graph()
@@ -123,6 +129,7 @@ Article text:
         entities_graph.bind("wd", WD)
         entities_graph.bind("owl", OWL)
 
+        logger.info("Building RDF graph with entities...")
         self._add_entities_to_graph(entities_graph, entities, article)
 
         return entities_graph
@@ -213,11 +220,11 @@ Article text:
 
         except json.JSONDecodeError as e:
             # If parsing fails, return empty list
-            print(f"Warning: JSON parsing failed: {e}")
-            print(f"Response was: {response.message.content[:500]}")
+            logger.warning("JSON parsing failed: %s", e)
+            logger.debug("Response was: %s", response.choices[0].message.content[:500])
             return []
         except Exception as e:
-            print(f"Warning: Entity extraction and reconciliation failed: {e}")
+            logger.warning("Entity extraction and reconciliation failed: %s", e)
             return []
 
     def _add_entities_to_graph(self, graph: Graph, entities: list[dict], article: Union[URIRef, BNode]) -> None:
